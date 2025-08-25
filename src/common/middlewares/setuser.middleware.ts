@@ -1,0 +1,19 @@
+import { Inject, Injectable, NestMiddleware } from '@nestjs/common';
+import { AuthService } from '../../modules/auth/auth.service';
+
+@Injectable()
+export class SetUserMiddleware implements NestMiddleware {
+  constructor(@Inject() private readonly authService: AuthService) {}
+
+  use(req: any, res: any, next: () => void) {
+    const permission = this.authService.getTokens(req);
+    if (!permission) {
+      req['user'] = { id: 'anon', name: 'anon' };
+      return next();
+    }
+    
+    const user = this.authService.identify(req);
+    req['user'] = user;
+    next();
+  }
+}
