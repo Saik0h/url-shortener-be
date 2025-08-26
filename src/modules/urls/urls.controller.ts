@@ -13,7 +13,6 @@ import { UrlsService } from './urls.service';
 import { CreateUrlDto } from './dto/create-url.dto';
 import { Request, Response } from 'express';
 import { AuthUser } from '../../common/AuthUser.decorator';
-import { User } from '../../typeorm/entity/User';
 import { DecodedJWT } from '../../common/types';
 
 @Controller('u')
@@ -24,7 +23,7 @@ export class UrlsController {
   shortenUrl(
     @Body() dto: CreateUrlDto,
     @Req() req: Request,
-    @AuthUser() user: User,
+    @AuthUser() user: DecodedJWT,
   ) {
     return this.urlsService.shorten(dto, req, user);
   }

@@ -8,7 +8,7 @@ export class SetUserMiddleware implements NestMiddleware {
   use(req: any, res: any, next: () => void) {
     const permission = this.authService.getTokens(req);
     if (!permission) {
-      req['user'] = { id: 'anon', name: 'anon' };
+      req['user'] = { id: 'c97f568c-bce0-4c4a-a7ff-335a2e99335a', email: 'anon@anon.com' };
       return next();
     }
     

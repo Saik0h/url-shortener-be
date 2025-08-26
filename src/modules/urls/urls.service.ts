@@ -21,17 +21,21 @@ export class UrlsService {
     private readonly urlRepo: Repository<Url>,
     @InjectRepository(Access)
     private readonly accessRepo: Repository<Access>,
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
   ) {}
 
-  async shorten(dto: CreateUrlDto, req: Request, user: User) {
+  async shorten(dto: CreateUrlDto, req: Request, user: DecodedJWT) {
     const u = new Url();
+    const { id } = user;
+    const User = await this.userRepo.findOneBy({ id });
 
     const { customID, customPrefix, url, expiresAt } = dto;
     const host = `${req.protocol}://${req.get('host')}`;
     let p = customPrefix ? customPrefix : 'e';
     let i = customID ? customID : nanoid(8);
 
-    u.user = user;
+    u.user = User;
     u.id = `${p}.${i}`;
     u.original = url;
     u.expiresAt = expiresAt ? new Date(expiresAt) : undefined;
