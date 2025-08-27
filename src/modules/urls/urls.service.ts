@@ -1,5 +1,6 @@
 import {
   ForbiddenException,
+  Inject,
   Injectable,
   NotFoundException,
   UnauthorizedException,
@@ -13,6 +14,8 @@ import { Repository } from 'typeorm';
 import { User } from '../../typeorm/entity/User';
 import { DecodedJWT } from '../../common/types';
 import { Access } from '../../typeorm/entity/Access';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
 
 @Injectable()
 export class UrlsService {
@@ -23,7 +26,8 @@ export class UrlsService {
     private readonly accessRepo: Repository<Access>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
-  ) {}
+    @Inject(CACHE_MANAGER) private cacheManager: Cache
+  ) { }
 
   async shorten(dto: CreateUrlDto, req: Request, user: DecodedJWT) {
     const u = new Url();
@@ -46,22 +50,34 @@ export class UrlsService {
   }
 
   async redirect(id: string, res: Response) {
-    const url = await this.urlRepo.findOneBy({ id });
-    if (!url) throw new NotFoundException('Original URL Not Found');
-    return res.redirect(url.original);
+    let original = await this.cacheManager.get<string>(id);
+
+    if (!original) {
+      const url = await this.urlRepo.findOneBy({ id });
+      if (!url) throw new NotFoundException('Original URL Not Found');
+      original = url.original;
+      await this.cacheManager.set(id, original, 3600 * 24);
+    }
+
+    return res.redirect(original);
   }
 
   async getAllFromUser(id: string) {
-    const user = await this.urlRepo.findOne({where: {id }  }, )
-    if (!user) {
-      throw new NotFoundException('Usuário não encontrado');
+    let urls: Array<Url> = await this.cacheManager.get(id);
+
+    if (!urls) {
+      urls = await this.urlRepo.find({ where: { user: { id } } })
+      if (urls.length === 0) {
+        throw new NotFoundException("User hasn't shortened any urls");
+      }
+      await this.cacheManager.set(id, urls, 3600 * 24)
     }
 
-    console.log("user")
-    return user;
+    return urls;
   }
 
   async delete(id: string, user: DecodedJWT) {
+    await this.cacheManager.del(id)
     const urlToDelete = await this.urlRepo.findOneBy({ id });
     if (!user || user.id === 'anon')
       throw new UnauthorizedException(

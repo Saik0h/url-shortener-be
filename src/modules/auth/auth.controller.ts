@@ -6,34 +6,37 @@ import { Request, Response } from 'express';
 import { AuthUser } from '../../common/AuthUser.decorator';
 import { JwtGuard } from '../../common/guards/jwt.guard';
 import { DecodedJWT } from '../../common/types';
+import { SkipThrottle, Throttle } from '@nestjs/throttler';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(private readonly authService: AuthService) { }
 
   @Get()
+  @SkipThrottle()
   @UseGuards(JwtGuard)
   getUser(@AuthUser() user: DecodedJWT) {
     return this.authService.getCurrent(user.id);
   }
 
   @Post('register')
-  async register(@Body() body: RegisterUserDto, @Res({passthrough: true}) res: Response) {
+  async register(@Body() body: RegisterUserDto, @Res({ passthrough: true }) res: Response) {
     return this.authService.registerUser(res, body);
   }
 
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('login')
-  login(@Body() body: LoginDto, @Res({passthrough: true}) res: Response) {
+  login(@Body() body: LoginDto, @Res({ passthrough: true }) res: Response) {
     return this.authService.login(body, res);
   }
 
   @Post('logout')
-  logout(@Res({passthrough: true}) res: Response) {
+  logout(@Res({ passthrough: true }) res: Response) {
     return this.authService.logout(res);
   }
 
   @Post('refresh')
-  refresh(@Req() req: Request, @Res({passthrough: true}) res: Response) {
+  refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     return this.authService.refresh(req, res);
   }
 }

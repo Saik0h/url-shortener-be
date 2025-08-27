@@ -14,11 +14,15 @@ import { CreateUrlDto } from './dto/create-url.dto';
 import { Request, Response } from 'express';
 import { AuthUser } from '../../common/AuthUser.decorator';
 import { DecodedJWT } from '../../common/types';
+import { SkipThrottle, Throttle } from '@nestjs/throttler';
 
+@SkipThrottle()
 @Controller('u')
 export class UrlsController {
   constructor(@Inject() private readonly urlsService: UrlsService) {}
 
+  @SkipThrottle({default: false})
+  @Throttle({default: {limit: 4, ttl: 2000}})
   @Post()
   shortenUrl(
     @Body() dto: CreateUrlDto,
@@ -27,6 +31,7 @@ export class UrlsController {
   ) {
     return this.urlsService.shorten(dto, req, user);
   }
+
 
   @Get('user')
   getAllFromUser(@AuthUser() user: DecodedJWT) {

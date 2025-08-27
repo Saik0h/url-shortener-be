@@ -2,21 +2,22 @@ import { Module } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtModule } from '@nestjs/jwt';
-import { CookieService } from './tools/cookie.service';
-import { HashService } from './tools/hash.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from '../../typeorm/entity/User';
+import { ToolsModule } from './tools/tools.module';
+import { UsersModule } from '../users/users.module';
 
 @Module({
   imports: [
+    ToolsModule,
+    UsersModule,
     JwtModule.register({
-      secret: 'minha_chave_secreta',
+      secret: 'Imagine a very big and long string here',
       signOptions: { expiresIn: '1h' },
     }),
-    TypeOrmModule.forFeature([User]),
-  ],
+    TypeOrmModule.forFeature([User]),],
+  providers: [AuthService],
   controllers: [AuthController],
-  providers: [ AuthService, CookieService, HashService],
-  exports: [AuthService, CookieService]
+  exports: [AuthService]
 })
-export class AuthModule {}
+export class AuthModule { }

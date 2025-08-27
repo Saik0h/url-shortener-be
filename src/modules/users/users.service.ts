@@ -4,12 +4,13 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { User } from '../../typeorm/entity/User';
 import { Repository } from 'typeorm';
 import { formatDate } from '../../common/helpers';
+import { CreateUserDto } from './dto/create-user.dto';
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(User) private readonly userRepo: Repository<User>,
-  ) {}
+  ) { }
 
   async getOne(id: string) {
     const user = await this.userRepo.findOneBy({ id });
@@ -32,5 +33,20 @@ export class UsersService {
     if (!user) throw new NotFoundException('User Not Found or Does Not Exist');
     await this.userRepo.remove(user);
     return { message: 'User Removed Successfully' };
+  }
+
+  async createUser(dto: CreateUserDto) {
+    const user = this.userRepo.create(dto);
+    await this.userRepo.save(user);
+
+    return user
+  }
+
+  async getByEmail(email: string) {
+    return await this.userRepo.findOneBy({ email })
+  }
+
+  async getById(id: string) {
+    return await this.userRepo.findOneBy({ id })
   }
 }
