@@ -28,8 +28,16 @@ export class UrlsController {
     return this.urlsService.shorten(dto, req, user);
   }
 
+  @Get('user')
+  getAllFromUser(@AuthUser() user: DecodedJWT) {
+    return this.urlsService.getAllFromUser(user.id);
+  }
+
   @Get(':id')
-  redirecTo(@Param('id') id: string, @Res() res: Response) {
+  redirecTo(
+    @Param('id') id: string,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     return this.urlsService.redirect(id, res);
   }
 

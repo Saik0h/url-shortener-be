@@ -51,6 +51,16 @@ export class UrlsService {
     return res.redirect(url.original);
   }
 
+  async getAllFromUser(id: string) {
+    const user = await this.urlRepo.findOne({where: {id }  }, )
+    if (!user) {
+      throw new NotFoundException('Usuário não encontrado');
+    }
+
+    console.log("user")
+    return user;
+  }
+
   async delete(id: string, user: DecodedJWT) {
     const urlToDelete = await this.urlRepo.findOneBy({ id });
     if (!user || user.id === 'anon')
