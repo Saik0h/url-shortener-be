@@ -1,7 +1,8 @@
-export function formatDate(date: Date): string {
-  const year = date.getUTCFullYear();
-  const month = date.getUTCMonth() + 1;
-  const day = date.getUTCDate();
+export function formatDate(date: string): string {
+  const d = new Date(date)
+  const year = d.getUTCFullYear();
+  const month = d.getUTCMonth() + 1;
+  const day = d.getUTCDate();
 
   const pad = (n: number) => n.toString().padStart(2, '0');
 

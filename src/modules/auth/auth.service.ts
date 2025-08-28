@@ -5,7 +5,7 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { RegisterUserDto } from './dto/register-user.dto';
+import { RegisterUserDto } from '../users/dto/register-user.dto';
 import { LoginDto } from './dto/login.dto';
 import { Request, Response } from 'express';
 import { CookieService } from './tools/cookie.service';
@@ -26,13 +26,14 @@ export class AuthService {
   async registerUser(res: Response, dto: RegisterUserDto) {
     const userExists = await this.userService.getByEmail(dto.email);
     if (userExists) throw new ConflictException('Email already registered');
-
+    console.log("Dentro de register user do auth")
     const hashedPass = this.hashService.hash(dto.password);
 
     const user = await this.userService.createUser({
       ...dto,
       password: hashedPass,
     });
+    console.log("Dentro de register user do auth, usuario criado")
 
 
     const payload = { id: user.id, email: user.email };
@@ -59,13 +60,6 @@ export class AuthService {
     this.cookieService.setCookie(res, 'token', token);
 
     return { message: 'Successfully Logged In' };
-  }
-
-  async getCurrent(id: string) {
-    
-    const user = await this.userService.getById(id);
-    if (!user) throw new NotFoundException('User Not Found or Does Not Exist');
-    return user;
   }
 
   refresh(req: Request, res: Response) {
