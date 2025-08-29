@@ -12,6 +12,6 @@ export class Access {
   @Column()
   ip: string;
 
-  @ManyToOne(() => Url, (url) => url.accessCount)
+  @ManyToOne(() => Url, (url) => url.accessCount, { onDelete: 'CASCADE' })
   url: Url;
 }

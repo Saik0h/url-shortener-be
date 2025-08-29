@@ -6,8 +6,8 @@ import { AuthUser } from '../../common/AuthUser.decorator';
 import { JwtGuard } from '../../common/guards/jwt.guard';
 import { DecodedJWT } from '../../common/types';
 
-@SkipThrottle()
 @Controller('users')
+@SkipThrottle()
 @UseInterceptors(ClassSerializerInterceptor)
 export class UsersController {
   constructor(private readonly usersService: UsersService) { }

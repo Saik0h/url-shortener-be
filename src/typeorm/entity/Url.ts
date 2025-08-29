@@ -26,7 +26,7 @@ export class Url {
   @Column()
   publishedBy: string;
 
-  @OneToMany(() => Access, (access) => access.url)
+  @OneToMany(() => Access, (access) => access.url, { cascade: true, onDelete: 'CASCADE' })
   accessCount: Access[];
 
   @ManyToOne(() => User, (user) => user.urls)
