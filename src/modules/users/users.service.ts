@@ -76,9 +76,7 @@ export class UsersService {
           original: true,
           createdAt: true,
           expiresAt: true,
-          accessCount: {
-            when: true,
-          },
+          accessCount: true,
         },
       },
     });

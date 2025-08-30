@@ -1,8 +1,6 @@
 import {
-  ConflictException,
   Inject,
   Injectable,
-  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { RegisterUserDto } from '../users/dto/register-user.dto';

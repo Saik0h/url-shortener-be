@@ -1,7 +1,6 @@
 import { Transform } from 'class-transformer';
-import { formatDate } from '../../../common/helpers';
 
 export class AccessDto {
-  @Transform(({ value }) => formatDate(value))
+  @Transform(({ value }) => value.toLocaleString())
   when: Date;
 }

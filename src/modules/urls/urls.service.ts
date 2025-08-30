@@ -26,8 +26,8 @@ export class UrlsService {
     private readonly accessRepo: Repository<Access>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
-    @Inject(CACHE_MANAGER) private cacheManager: Cache
-  ) { }
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
+  ) {}
 
   async shorten(dto: CreateUrlDto, req: Request, user: DecodedJWT) {
     const u = new Url();
@@ -45,8 +45,10 @@ export class UrlsService {
     u.expiresAt = expiresAt ? new Date(expiresAt) : undefined;
     u.publishedBy = user.id;
 
-    await this.urlRepo.save(u);
-    return `${host}/u/${u.id}`;
+    const urlEntity = await this.urlRepo.save(u);
+    const shortened = `${host}/u/${u.id}`;
+    
+    return { message: 'Success!', shortened, url: urlEntity };
   }
 
   async redirect(id: string, res: Response) {
@@ -66,18 +68,18 @@ export class UrlsService {
     let urls: Array<Url> = await this.cacheManager.get(id);
 
     if (!urls) {
-      urls = await this.urlRepo.find({ where: { user: { id } } })
+      urls = await this.urlRepo.find({ where: { user: { id } } });
       if (urls.length === 0) {
         throw new NotFoundException("User hasn't shortened any urls");
       }
-      await this.cacheManager.set(id, urls, 3600 * 24)
+      await this.cacheManager.set(id, urls, 3600 * 24);
     }
 
     return urls;
   }
 
   async delete(id: string, user: DecodedJWT) {
-    await this.cacheManager.del(id)
+    await this.cacheManager.del(id);
     const urlToDelete = await this.urlRepo.findOneBy({ id });
     if (!user || user.id === 'anon')
       throw new UnauthorizedException(
@@ -94,7 +96,7 @@ export class UrlsService {
   }
 
   async registerAccess(id: string, ip: string) {
-    const url = await this.urlRepo.findOneByOrFail({ id });
+    const url = await this.urlRepo.findOneBy({ id });
     const when = new Date();
     const access = this.accessRepo.create({ url, ip, when });
     await this.accessRepo.save(access);
