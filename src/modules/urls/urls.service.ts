@@ -12,7 +12,7 @@ import { nanoid } from 'nanoid';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../../typeorm/entity/User';
-import { DecodedJWT } from '../../common/types';
+import { RequestUser } from '../../common/types';
 import { Access } from '../../typeorm/entity/Access';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
@@ -29,10 +29,10 @@ export class UrlsService {
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
-  async shorten(dto: CreateUrlDto, req: Request, user: DecodedJWT) {
+  async shorten(dto: CreateUrlDto, req: Request, user: RequestUser) {
     const u = new Url();
-    const { id } = user;
-    const User = await this.userRepo.findOneBy({ id });
+    const { sub } = user;
+    const User = await this.userRepo.findOneBy({ id: sub });
 
     const { customID, customPrefix, url, expiresAt } = dto;
     const host = `${req.protocol}://${req.get('host')}`;
@@ -43,11 +43,11 @@ export class UrlsService {
     u.id = `${p}.${i}`;
     u.original = url;
     u.expiresAt = expiresAt ? new Date(expiresAt) : undefined;
-    u.publishedBy = user.id;
+    u.publishedBy = user.sub;
 
     const urlEntity = await this.urlRepo.save(u);
     const shortened = `${host}/u/${u.id}`;
-    
+
     return { message: 'Success!', shortened, url: urlEntity };
   }
 
@@ -78,20 +78,14 @@ export class UrlsService {
     return urls;
   }
 
-  async delete(id: string, user: DecodedJWT) {
+  async delete(id: string, userID: string) {
     await this.cacheManager.del(id);
     const urlToDelete = await this.urlRepo.findOneBy({ id });
-    if (!user || user.id === 'anon')
-      throw new UnauthorizedException(
-        'In Order to Delete a URL, You Must Be Logged In',
-      );
-
     if (!urlToDelete) throw new NotFoundException('URL Doesnt exist');
-    if (user.id !== urlToDelete.publishedBy)
+    console.log(userID, urlToDelete.publishedBy);
+    if (userID !== urlToDelete.publishedBy)
       throw new ForbiddenException('You Can Only Delete Your Own URLs');
-
     await this.urlRepo.remove(urlToDelete);
-
     return { message: 'URL Deleted.' };
   }
 

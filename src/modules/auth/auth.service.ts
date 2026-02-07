@@ -1,4 +1,5 @@
 import {
+  ConflictException,
   Inject,
   Injectable,
   UnauthorizedException,
@@ -9,8 +10,18 @@ import { Request, Response } from 'express';
 import { CookieService } from './tools/cookie.service';
 import { HashService } from './tools/hash.service';
 import { JwtService } from '@nestjs/jwt';
-import { DecodedJWT } from '../../common/types';
+import { RequestUser } from '../../common/types';
 import { UsersService } from '../users/users.service';
+import { Repository } from 'typeorm';
+import { User } from '../../typeorm/entity/User';
+import { InjectRepository } from '@nestjs/typeorm';
+type JWT_Payload = {
+  sub: string;
+};
+const oneHour = 60000 * 60;
+const TOKEN = 'token';
+const REFRESH_TOKEN = 'refresh_token';
+const REFRESH_TOKEN_COOKIE_EXPIRY = oneHour * 24 * 7;
 
 @Injectable()
 export class AuthService {
@@ -19,20 +30,31 @@ export class AuthService {
     private readonly cookieService: CookieService,
     private readonly hashService: HashService,
     private readonly userService: UsersService,
+    @InjectRepository(User) private readonly userRepo: Repository<User>,
   ) {}
 
   async registerUser(res: Response, dto: RegisterUserDto) {
-    await this.userService.verifyEmail(dto.email);
-    const hashedPass = this.hashService.hash(dto.password);
+    const exists = await this.userRepo.findOneBy({ email: dto.email });
+    if (!!exists) throw new ConflictException('Email already registered');
+    const hashedPass = await this.hashService.hash(dto.password);
 
     const user = await this.userService.createUser({
       ...dto,
       password: hashedPass,
     });
 
-    const payload = { id: user.id, email: user.email };
-    const token = this.jwt.sign(payload);
-    this.cookieService.setCookie(res, 'token', token, { maxAge: 3600000 });
+    const payload: JWT_Payload = { sub: user.id };
+
+    const token = this.jwt.sign(payload, { expiresIn: '5m' });
+    const refresh_token = this.jwt.sign(payload, { expiresIn: '7d' });
+
+    user.refreshTokenHash = await this.hashService.hash(refresh_token);
+    await this.userRepo.save(user);
+
+    this.cookieService.setCookie(res, TOKEN, token);
+    this.cookieService.setCookie(res, REFRESH_TOKEN, refresh_token, {
+      maxAge: REFRESH_TOKEN_COOKIE_EXPIRY,
+    });
     return { message: 'user registered successfully' };
   }
 
@@ -40,46 +62,80 @@ export class AuthService {
     const { email, password } = dto;
     const user = await this.userService.getByEmail(email);
     if (!user) throw new UnauthorizedException('Invalid Credentials');
-    const isPasswordValid = this.hashService.compare(password, user.password);
+    const isPasswordValid = await this.hashService.compare(
+      password,
+      user.password,
+    );
     if (!isPasswordValid)
       throw new UnauthorizedException('Invalid Credentials');
 
-    const payload = {
-      id: user.id,
-      email: user.email,
+    const payload: JWT_Payload = {
+      sub: user.id,
     };
 
-    const token = this.jwt.sign(payload);
+    const token = this.jwt.sign(payload, { expiresIn: '5m' });
+    const refresh_token = this.jwt.sign(payload, { expiresIn: '7d' });
 
-    this.cookieService.setCookie(res, 'token', token);
+    const ufdb = await this.userRepo.findOneBy({ id: user.id });
+    ufdb.refreshTokenHash = await this.hashService.hash(refresh_token);
+    await this.userRepo.save(ufdb);
+
+    this.cookieService.setCookie(res, TOKEN, token);
+    this.cookieService.setCookie(res, REFRESH_TOKEN, refresh_token, {
+      maxAge: REFRESH_TOKEN_COOKIE_EXPIRY,
+    });
 
     return { message: 'Successfully Logged In' };
   }
 
-  refresh(req: Request, res: Response) {
-    const token = this.cookieService.getCookie(req, 'token');
-    if (!token) throw new UnauthorizedException('No token provided');
-
+  async refresh(req: Request, res: Response) {
     try {
-      this.jwt.verify(token);
+      const token = this.cookieService.getCookie(req, REFRESH_TOKEN);
+      if (!token) throw new UnauthorizedException('No token provided');
+      const u = this.jwt.verify<RequestUser>(token);
+
+      const user = await this.userRepo.findOneBy({ id: u.sub });
+      console.log(user)
+      const valid = await this.hashService.compare(
+        token,
+        user.refreshTokenHash,
+      );
+      if (!valid) throw new UnauthorizedException();
+
+      const newAccess = this.jwt.sign({ sub: user.id }, { expiresIn: '5m' });
+      const newRefresh = this.jwt.sign({ sub: user.id }, { expiresIn: '7d' });
+      user.refreshTokenHash = await this.hashService.hash(newRefresh);
+      await this.userRepo.save(user);
+
+      this.cookieService.setCookie(res, TOKEN, newAccess);
+      this.cookieService.setCookie(res, REFRESH_TOKEN, newRefresh, {
+        maxAge: REFRESH_TOKEN_COOKIE_EXPIRY,
+      });
     } catch (error) {
       throw new UnauthorizedException('Invalid Token');
     }
   }
 
-  logout(res: Response) {
-    this.cookieService.clearCookie(res, 'token');
+  async logout(res: Response, id: string) {
+    console.log('OI')
+    this.cookieService.clearCookie(res, TOKEN);
+    this.cookieService.clearCookie(res, REFRESH_TOKEN);
+    const user = await this.userRepo.findOneBy({ id });
+    user.refreshTokenHash = null;
+    await this.userRepo.save(user);
     return { message: 'Logged out' };
   }
 
   getTokens(req: Request) {
-    return this.cookieService.getCookie(req, 'token');
+    const access_token = this.cookieService.getCookie(req, TOKEN);
+    const refresh_token = this.cookieService.getCookie(req, REFRESH_TOKEN);
+    return { access_token, refresh_token };
   }
 
-  identify(req: Request): DecodedJWT {
-    const token = this.cookieService.getCookie(req, 'token');
+  identify(req: Request): RequestUser {
+    const token = this.cookieService.getCookie(req, TOKEN);
     if (!token) throw new UnauthorizedException('User is Not Logged In');
-    const validToken = this.jwt.decode(token);
+    const validToken = this.jwt.verify(token);
 
     return validToken;
   }

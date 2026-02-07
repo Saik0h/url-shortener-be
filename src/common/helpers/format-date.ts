@@ -1,5 +1,5 @@
 export function formatDate(date: string): string {
-  const d = new Date(date)
+  const d = new Date(date);
   const year = d.getUTCFullYear();
   const month = d.getUTCMonth() + 1;
   const day = d.getUTCDate();

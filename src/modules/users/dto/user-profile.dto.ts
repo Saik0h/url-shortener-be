@@ -3,7 +3,6 @@ import { formatDate } from '../../../common/helpers';
 import { UrlDto } from './profile-url.dto';
 
 export class UserProfileDto {
-
   id: string;
   name: string;
   email: string;

@@ -3,12 +3,21 @@ import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class HashService {
-  hash(password: string): string {
-    const salt = bcrypt.genSaltSync();
-    return bcrypt.hashSync(password, salt);
+  private readonly saltRounds = 12;
+
+  async hash(password: string): Promise<string> {
+    if (!password) {
+      throw new Error('Password is required');
+    }
+
+    return bcrypt.hash(password, this.saltRounds);
   }
 
-  compare(password: string, hashed: string): boolean {
-    return bcrypt.compareSync(password, hashed);
+  async compare(password: string, hashed: string): Promise<boolean> {
+    if (!password || !hashed) {
+      return false;
+    }
+
+    return bcrypt.compare(password, hashed);
   }
 }

@@ -1,5 +1,8 @@
 import {
+  BadRequestException,
   ConflictException,
+  ForbiddenException,
+  Inject,
   Injectable,
   NotFoundException,
   UnauthorizedException,
@@ -12,11 +15,15 @@ import { formatDate } from '../../common/helpers';
 import { RegisterUserDto } from './dto/register-user.dto';
 import { UserProfileDto } from './dto/user-profile.dto';
 import { plainToInstance } from 'class-transformer';
+import { ChangePasswordDto } from './dto/change-password.dto';
+import { HashService } from '../auth/tools/hash.service';
+import { RequestUser } from '../../common/types';
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(User) private readonly userRepo: Repository<User>,
+    @Inject() private hashService: HashService,
   ) {}
 
   async getOne(id: string) {
@@ -24,15 +31,25 @@ export class UsersService {
     if (!user) throw new NotFoundException('User Does Not Exist');
 
     const userWsd = {
+      id: user.id,
       name: user.name,
+      refresh_token: user.refreshTokenHash,
       memberSince: formatDate(String(user.memberSince)),
     };
 
-    return { user: userWsd };
+    return { ...userWsd };
   }
 
-  update(id: number, updateUserDto: UpdateUserDto) {
-    return `This action updates a #${id} user`;
+  async getUserRefreshToken() {}
+
+  async update(id: string, updateUserDto: UpdateUserDto) {
+    const result = await this.userRepo.update({ id }, updateUserDto);
+
+    if (result.affected === 0) {
+      throw new NotFoundException();
+    }
+
+    return { message: 'User updated successfully' };
   }
 
   async remove(id: string) {
@@ -95,7 +112,44 @@ export class UsersService {
       ...user,
       urls,
     });
-
     return final;
+  }
+
+  async changePassword(userId: string, dto: ChangePasswordDto) {
+    const { currentPassword, newPassword, confirmPassword } = dto;
+
+    if (newPassword !== confirmPassword) {
+      throw new BadRequestException('Passwords do not match');
+    }
+
+    const user = await this.userRepo.findOne({
+      where: { id: userId },
+      select: ['id', 'password'],
+    });
+
+    if (await this.hashService.compare(newPassword, user.password)) {
+      throw new BadRequestException(
+        'New password must be different from the current password',
+      );
+    }
+
+    if (!user) {
+      throw new NotFoundException();
+    }
+
+    const isValid = await this.hashService.compare(
+      currentPassword,
+      user.password,
+    );
+
+    if (!isValid) {
+      throw new ForbiddenException('Invalid password');
+    }
+
+    user.password = await this.hashService.hash(newPassword);
+
+    await this.userRepo.save(user);
+
+    return { message: 'Password updated successfully' };
   }
 }

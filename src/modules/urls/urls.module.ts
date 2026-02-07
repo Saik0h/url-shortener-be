@@ -7,9 +7,9 @@ import { Access } from '../../typeorm/entity/Access';
 import { User } from '../../typeorm/entity/User';
 
 @Module({
-  imports:[TypeOrmModule.forFeature([Url, Access, User])],
+  imports: [TypeOrmModule.forFeature([Url, Access, User])],
   controllers: [UrlsController],
   providers: [UrlsService],
-  exports:[UrlsService]
+  exports: [UrlsService],
 })
 export class UrlsModule {}

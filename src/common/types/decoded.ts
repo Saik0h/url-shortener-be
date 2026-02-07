@@ -1,6 +1,3 @@
-export class DecodedJWT {
-  id: string;
-  email: string;
-  exp: string;
-  iat: string;
-}
+export type RequestUser =
+  | { isAuthenticated: true; sub: string; exp?: number; iat?: number }
+  | { isAuthenticated: false, sub: undefined, exp: undefined, iat: undefined};

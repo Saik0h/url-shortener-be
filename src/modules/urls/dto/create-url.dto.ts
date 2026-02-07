@@ -1,4 +1,10 @@
-import { IsUrl, IsDateString, IsOptional, IsString, Length } from 'class-validator';
+import {
+  IsUrl,
+  IsDateString,
+  IsOptional,
+  IsString,
+  Length,
+} from 'class-validator';
 
 export class CreateUrlDto {
   @IsString()
@@ -10,7 +16,7 @@ export class CreateUrlDto {
   @Length(3, 10)
   customID: string;
 
-  @IsUrl({require_host: true})
+  @IsUrl({ require_host: true })
   url: string;
 
   @IsDateString()

@@ -6,6 +6,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from '../../typeorm/entity/User';
 import { ToolsModule } from './tools/tools.module';
 import { UsersModule } from '../users/users.module';
+import { RefreshInterceptor } from '../../common/interceptors/refresh.interceptor';
 
 @Module({
   imports: [
@@ -15,9 +16,10 @@ import { UsersModule } from '../users/users.module';
       secret: 'Imagine a very big and long string here',
       signOptions: { expiresIn: '1h' },
     }),
-    TypeOrmModule.forFeature([User]),],
-  providers: [AuthService],
+    TypeOrmModule.forFeature([User]),
+  ],
+  providers: [AuthService, RefreshInterceptor],
   controllers: [AuthController],
-  exports: [AuthService]
+  exports: [AuthService],
 })
-export class AuthModule { }
+export class AuthModule {}

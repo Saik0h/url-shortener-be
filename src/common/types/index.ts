@@ -1,1 +1,1 @@
-export { DecodedJWT } from './decoded';
+export { RequestUser } from './decoded';
